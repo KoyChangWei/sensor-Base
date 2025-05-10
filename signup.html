@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - ESP32 Device Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        .card {
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+            transition: transform 0.3s ease;
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo a {
+            text-decoration: none;
+            display: inline-block;
+            color: inherit;
+            transition: transform 0.3s ease;
+        }
+        
+        .logo a:hover {
+            transform: scale(1.05);
+        }
+        
+        .logo h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #4c51bf;
+            margin-top: 10px;
+        }
+        
+        .logo svg {
+            width: 60px;
+            height: 60px;
+            fill: #4c51bf;
+        }
+        
+        h2 {
+            color: #333;
+            text-align: center;
+            font-size: 28px;
+            margin-bottom: 30px;
+            font-weight: 600;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #4a5568;
+            transition: color 0.3s ease;
+        }
+        
+        .form-group:focus-within label {
+            color: #4c51bf;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            font-size: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            background-color: white;
+            transition: all 0.3s ease;
+            outline: none;
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        input:focus {
+            border-color: #4c51bf;
+            box-shadow: 0 0 0 3px rgba(76, 81, 191, 0.2);
+        }
+        
+        .password-criteria {
+            font-size: 12px;
+            color: #718096;
+            margin-top: 5px;
+            padding-left: 5px;
+        }
+        
+        .password-strength {
+            height: 5px;
+            margin-top: 8px;
+            border-radius: 3px;
+            background-color: #e2e8f0;
+            overflow: hidden;
+        }
+        
+        .password-strength-bar {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+        
+        button {
+            width: 100%;
+            padding: 14px;
+            background-color: #4c51bf;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            outline: none;
+            margin-top: 10px;
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        button:hover {
+            background-color: #434190;
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .links {
+            margin-top: 25px;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .links a {
+            color: #4c51bf;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+        
+        .links a:hover {
+            color: #434190;
+            text-decoration: underline;
+        }
+        
+        .notification {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 500;
+            animation: fadeIn 0.5s ease-out;
+            display: none;
+        }
+        
+        .notification.success {
+            background-color: rgba(72, 187, 120, 0.2);
+            color: #2f855a;
+            border: 1px solid #2f855a;
+        }
+        
+        .notification.error {
+            background-color: rgba(245, 101, 101, 0.2);
+            color: #e53e3e;
+            border: 1px solid #e53e3e;
+        }
+        
+        .notification.warning {
+            background-color: rgba(237, 137, 54, 0.2);
+            color: #c05621;
+            border: 1px solid #c05621;
+        }
+        
+        .loading-spinner {
+            display: none;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #4c51bf;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="logo">
+                <a href="index_landing.html">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M17 16.47V10a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v6.47a2.31 2.31 0 0 0 1.93 2.28 6.58 6.58 0 0 0 4.13 0A2.31 2.31 0 0 0 17 16.47Z"/>
+                        <path d="M12 4a1.86 1.86 0 0 0-1.22.54 1.9 1.9 0 0 0-.53 1.21A1.74 1.74 0 0 0 12 7.5a1.74 1.74 0 0 0 1.75-1.75A1.89 1.89 0 0 0 13.21 4.5 1.73 1.73 0 0 0 12 4Z"/>
+                        <path d="M20.05 17.55l-2.77-3.58a.5.5 0 0 0-.39-.19.47.47 0 0 0-.4.19l-2.12 2.74a.5.5 0 0 0 .4.8h1.73A6 6 0 0 1 12 20a6 6 0 0 1-4.5-2.49h1.73a.5.5 0 0 0 .4-.8L7.51 14a.47.47 0 0 0-.8 0L4 17.55a.5.5 0 0 0 .4.8h2A8 8 0 0 0 12 22a8 8 0 0 0 5.6-3.65h2a.5.5 0 0 0 .45-.8Z"/>
+                    </svg>
+                    <h1>ESP32 Device Manager</h1>
+                </a>
+            </div>
+            
+            <h2>Create Account</h2>
+            
+            <div id="notification" class="notification"></div>
+            
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="Enter your email" autocomplete="email">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Create a password" autocomplete="new-password">
+                <div class="password-criteria">
+                    Password should be at least 6 characters long
+                </div>
+                <div class="password-strength">
+                    <div id="passwordStrengthBar" class="password-strength-bar"></div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password</label>
+                <input type="password" id="confirmPassword" placeholder="Confirm your password" autocomplete="new-password">
+            </div>
+            
+            <button id="signupBtn">Create Account</button>
+            
+            <div class="loading-spinner" id="spinner">
+                <div class="spinner"></div>
+            </div>
+            
+            <div class="links">
+                <p>Already have an account? <a href="login.html">Log in here</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA8YXAwTfFyOYscuWYmDGd5t4jwktkOCH4",
+            authDomain: "asg2-a34e6.firebaseapp.com",
+            databaseURL: "https://asg2-a34e6-default-rtdb.firebaseio.com",
+            projectId: "asg2-a34e6",
+            storageBucket: "asg2-a34e6.appspot.com"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        
+        // DOM Elements
+        const email = document.getElementById('email');
+        const password = document.getElementById('password');
+        const confirmPassword = document.getElementById('confirmPassword');
+        const signupBtn = document.getElementById('signupBtn');
+        const notification = document.getElementById('notification');
+        const spinner = document.getElementById('spinner');
+        const passwordStrengthBar = document.getElementById('passwordStrengthBar');
+        
+        // Check if user is already logged in
+        firebase.auth().onAuthStateChanged((user) => {
+            if (user) {
+                // User is signed in, redirect to device management page
+                window.location.href = 'mainPage.html';
+            }
+        });
+        
+        // Password strength meter
+        password.addEventListener('input', () => {
+            const passwordValue = password.value;
+            let strength = 0;
+            
+            if (passwordValue.length >= 6) {
+                strength += 20;
+            }
+            
+            if (passwordValue.length >= 8) {
+                strength += 20;
+            }
+            
+            if (/[A-Z]/.test(passwordValue)) {
+                strength += 20;
+            }
+            
+            if (/[0-9]/.test(passwordValue)) {
+                strength += 20;
+            }
+            
+            if (/[^A-Za-z0-9]/.test(passwordValue)) {
+                strength += 20;
+            }
+            
+            passwordStrengthBar.style.width = `${strength}%`;
+            
+            if (strength < 40) {
+                passwordStrengthBar.style.backgroundColor = '#e53e3e'; // Red
+            } else if (strength < 80) {
+                passwordStrengthBar.style.backgroundColor = '#ed8936'; // Orange
+            } else {
+                passwordStrengthBar.style.backgroundColor = '#38a169'; // Green
+            }
+        });
+        
+        // Signup function
+        signupBtn.addEventListener('click', () => {
+            const emailValue = email.value.trim();
+            const passwordValue = password.value;
+            const confirmPasswordValue = confirmPassword.value;
+            
+            // Validate form
+            if (!emailValue || !passwordValue) {
+                showNotification('Please enter both email and password', 'error');
+                return;
+            }
+            
+            if (passwordValue.length < 6) {
+                showNotification('Password must be at least 6 characters long', 'error');
+                return;
+            }
+            
+            if (passwordValue !== confirmPasswordValue) {
+                showNotification('Passwords do not match', 'error');
+                return;
+            }
+            
+            // Show loading spinner
+            spinner.style.display = 'flex';
+            signupBtn.disabled = true;
+            
+            // Create user
+            firebase.auth().createUserWithEmailAndPassword(emailValue, passwordValue)
+                .then((userCredential) => {
+                    // Signup successful
+                    showNotification('Account created successfully! Redirecting...', 'success');
+                    setTimeout(() => {
+                        window.location.href = 'mainPage.html';
+                    }, 1500);
+                })
+                .catch((error) => {
+                    // Signup failed
+                    showNotification(`Registration error: ${error.message}`, 'error');
+                    spinner.style.display = 'none';
+                    signupBtn.disabled = false;
+                });
+        });
+        
+        // Enter key functionality
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                signupBtn.click();
+            }
+        });
+        
+        // Show notification function
+        function showNotification(message, type) {
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.display = 'block';
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html> 

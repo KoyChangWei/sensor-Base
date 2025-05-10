@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Device Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #3a7bd5 0%, #00d2ff 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            color: white;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo a {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: white;
+            transition: transform 0.3s ease;
+        }
+        
+        .logo a:hover {
+            transform: scale(1.05);
+        }
+        
+        .logo svg {
+            width: 40px;
+            height: 40px;
+            fill: white;
+            margin-right: 10px;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+        }
+        
+        .user-info span {
+            margin-right: 15px;
+            font-weight: 500;
+        }
+        
+        .card {
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin-bottom: 30px;
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        h2 {
+            color: #2d3748;
+            font-size: 24px;
+            margin-bottom: 20px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+        
+        h2 svg {
+            width: 24px;
+            height: 24px;
+            margin-right: 10px;
+            fill: #3182ce;
+        }
+        
+        .current-values {
+            background-color: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #3182ce;
+        }
+        
+        .current-values h3 {
+            color: #3182ce;
+            font-size: 18px;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        
+        .value-item {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        
+        .value-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .value-label {
+            width: 120px;
+            font-weight: 500;
+            color: #4a5568;
+        }
+        
+        .value-content {
+            flex: 1;
+            color: #2d3748;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #4a5568;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        input:focus, textarea:focus {
+            border-color: #3182ce;
+            box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.2);
+            outline: none;
+        }
+        
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        button {
+            padding: 12px 20px;
+            background-color: #3182ce;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        button:hover {
+            background-color: #2c5282;
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .btn-danger {
+            background-color: #e53e3e;
+        }
+        
+        .btn-danger:hover {
+            background-color: #c53030;
+        }
+        
+        #logoutBtn {
+            background-color: transparent;
+            color: white;
+            border: 2px solid white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        
+        #logoutBtn:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .notification {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 500;
+            animation: fadeIn 0.5s ease-out;
+            display: none;
+        }
+        
+        .notification.success {
+            background-color: rgba(72, 187, 120, 0.2);
+            color: #2f855a;
+            border: 1px solid #2f855a;
+        }
+        
+        .notification.error {
+            background-color: rgba(245, 101, 101, 0.2);
+            color: #e53e3e;
+            border: 1px solid #e53e3e;
+        }
+        
+        .notification.info {
+            background-color: rgba(49, 130, 206, 0.2);
+            color: #2c5282;
+            border: 1px solid #2c5282;
+        }
+        
+        #reconfigInstructions {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: rgba(245, 101, 101, 0.1);
+            border: 2px dashed #e53e3e;
+            border-radius: 8px;
+            color: #e53e3e;
+            font-weight: 500;
+            display: none;
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        #reconfigInstructions ol {
+            margin-top: 15px;
+            margin-left: 20px;
+        }
+        
+        #reconfigInstructions li {
+            margin-bottom: 10px;
+        }
+        
+        #reconfigInstructions a {
+            color: #e53e3e;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <a href="index_landing.html">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M17 16.47V10a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v6.47a2.31 2.31 0 0 0 1.93 2.28 6.58 6.58 0 0 0 4.13 0A2.31 2.31 0 0 0 17 16.47Z"/>
+                        <path d="M12 4a1.86 1.86 0 0 0-1.22.54 1.9 1.9 0 0 0-.53 1.21A1.74 1.74 0 0 0 12 7.5a1.74 1.74 0 0 0 1.75-1.75A1.89 1.89 0 0 0 13.21 4.5 1.73 1.73 0 0 0 12 4Z"/>
+                        <path d="M20.05 17.55l-2.77-3.58a.5.5 0 0 0-.39-.19.47.47 0 0 0-.4.19l-2.12 2.74a.5.5 0 0 0 .4.8h1.73A6 6 0 0 1 12 20a6 6 0 0 1-4.5-2.49h1.73a.5.5 0 0 0 .4-.8L7.51 14a.47.47 0 0 0-.8 0L4 17.55a.5.5 0 0 0 .4.8h2A8 8 0 0 0 12 22a8 8 0 0 0 5.6-3.65h2a.5.5 0 0 0 .45-.8Z"/>
+                    </svg>
+                    <h1>ESP32 Device Manager</h1>
+                </a>
+            </div>
+            <div class="user-info">
+                <span id="userEmail">Loading...</span>
+                <button id="logoutBtn">Logout</button>
+            </div>
+        </header>
+
+        <div id="notification" class="notification"></div>
+
+        <!-- Current Values Card -->
+        <div class="card">
+            <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M13 2.05v3.03c3.39.49 6 3.39 6 6.92 0 .9-.18 1.75-.48 2.54l2.6 1.53c.56-1.24.88-2.62.88-4.07 0-5.18-3.95-9.45-9-9.95zM12 19c-3.87 0-7-3.13-7-7 0-3.53 2.61-6.43 6-6.92V2.05c-5.06.5-9 4.76-9 9.95 0 5.52 4.47 10 9.99 10 3.31 0 6.24-1.61 8.06-4.09l-2.6-1.53A6.95 6.95 0 0 1 12 19z"/>
+                </svg>
+                Current Device Status
+            </h2>
+            <div class="current-values">
+                <div class="value-item">
+                    <div class="value-label">Device ID:</div>
+                    <div class="value-content" id="currentDeviceId">Loading...</div>
+                </div>
+                <div class="value-item">
+                    <div class="value-label">Status:</div>
+                    <div class="value-content" id="currentStatus">Loading...</div>
+                </div>
+                <div class="value-item">
+                    <div class="value-label">Message:</div>
+                    <div class="value-content" id="currentMessage">Loading...</div>
+                </div>
+                <div class="value-item">
+                    <div class="value-label">Last Update:</div>
+                    <div class="value-content" id="lastUpdate">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Update Settings Card -->
+        <div class="card">
+            <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+                </svg>
+                Update Device Settings
+            </h2>
+            <div class="form-group">
+                <label for="deviceId">Device ID:</label>
+                <input type="text" id="deviceId" placeholder="Enter new device ID">
+            </div>
+            <div class="form-group">
+                <label for="message">Display Message:</label>
+                <textarea id="message" placeholder="Enter message to display on OLED"></textarea>
+            </div>
+            <button id="updateBtn">Update Settings</button>
+        </div>
+
+        <!-- Reconfiguration Card -->
+        <div class="card">
+            <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3a4.237 4.237 0 0 0-6 0zm-4-4l2 2a7.074 7.074 0 0 1 10 0l2-2c-3.91-3.91-10.09-3.91-14 0z"/>
+                </svg>
+                WiFi Reconfiguration
+            </h2>
+            <p>Press the button below to put your ESP32 into Access Point mode for WiFi reconfiguration.</p>
+            <p><strong>Note:</strong> This will disconnect your ESP32 from its current WiFi network.</p>
+            <button id="reconfigBtn" class="btn-danger">Reconfigure ESP32 WiFi</button>
+            
+            <div id="reconfigInstructions">
+                <p><strong>ESP32 is now in Access Point mode!</strong></p>
+                <ol>
+                    <li>On your device, connect to the <strong>"ESP32_Config"</strong> WiFi network</li>
+                    <li>Password: <strong>password</strong></li>
+                    <li>Open a web browser and navigate to <a href="http://192.168.4.1" target="_blank">http://192.168.4.1</a></li>
+                    <li>Follow instructions on that page to reconfigure your ESP32</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA8YXAwTfFyOYscuWYmDGd5t4jwktkOCH4",
+            authDomain: "asg2-a34e6.firebaseapp.com",
+            databaseURL: "https://asg2-a34e6-default-rtdb.firebaseio.com",
+            projectId: "asg2-a34e6",
+            storageBucket: "asg2-a34e6.appspot.com"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        
+        // DOM Elements
+        const userEmail = document.getElementById('userEmail');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const deviceId = document.getElementById('deviceId');
+        const message = document.getElementById('message');
+        const updateBtn = document.getElementById('updateBtn');
+        const reconfigBtn = document.getElementById('reconfigBtn');
+        const notification = document.getElementById('notification');
+        const currentDeviceId = document.getElementById('currentDeviceId');
+        const currentStatus = document.getElementById('currentStatus');
+        const currentMessage = document.getElementById('currentMessage');
+        const lastUpdate = document.getElementById('lastUpdate');
+        const reconfigInstructions = document.getElementById('reconfigInstructions');
+        
+        // Firebase paths
+        const PATH_DEVICE_ID = '/101/OLED/device_id';
+        const PATH_STATUS = '/101/OLED/status';
+        const PATH_MESSAGE = '/101/OLED/message';
+        const PATH_CREDENTIAL_STATUS = '/101/Credential/status';
+        
+        // Authentication state observer
+        firebase.auth().onAuthStateChanged((user) => {
+            if (user) {
+                // User is signed in
+                userEmail.textContent = user.email;
+                loadDeviceData();
+                // Set up real-time database listeners
+                setupRealtimeListeners();
+            } else {
+                // User is signed out, redirect to login page
+                window.location.href = 'login.html';
+            }
+        });
+        
+        // Logout function
+        logoutBtn.addEventListener('click', () => {
+            firebase.auth().signOut()
+                .then(() => {
+                    // Sign-out successful, redirect handled by auth state observer
+                })
+                .catch((error) => {
+                    showNotification(`Logout error: ${error.message}`, 'error');
+                });
+        });
+        
+        // Load device data from Firebase
+        function loadDeviceData() {
+            showNotification('Loading device data...', 'info');
+            
+            // Get device ID
+            firebase.database().ref(PATH_DEVICE_ID).once('value')
+                .then((snapshot) => {
+                    const value = snapshot.val() || 'Not set';
+                    currentDeviceId.textContent = value;
+                    deviceId.value = value;
+                })
+                .catch((error) => {
+                    console.error("Error getting device ID:", error);
+                    currentDeviceId.textContent = 'Error loading';
+                });
+                
+            // Get status
+            firebase.database().ref(PATH_STATUS).once('value')
+                .then((snapshot) => {
+                    const value = snapshot.val() || 'Not set';
+                    currentStatus.textContent = value;
+                })
+                .catch((error) => {
+                    console.error("Error getting status:", error);
+                    currentStatus.textContent = 'Error loading';
+                });
+                
+            // Get message
+            firebase.database().ref(PATH_MESSAGE).once('value')
+                .then((snapshot) => {
+                    const value = snapshot.val() || 'Not set';
+                    currentMessage.textContent = value;
+                    message.value = value;
+                    
+                    // Data loaded successfully
+                    showNotification('Device data loaded successfully!', 'success');
+                    lastUpdate.textContent = new Date().toLocaleTimeString();
+                })
+                .catch((error) => {
+                    console.error("Error getting message:", error);
+                    currentMessage.textContent = 'Error loading';
+                    showNotification('Error loading some device data', 'error');
+                });
+        }
+        
+        // Setup real-time listeners for Firebase data
+        function setupRealtimeListeners() {
+            // Listen for device ID changes
+            firebase.database().ref(PATH_DEVICE_ID).on('value', (snapshot) => {
+                const value = snapshot.val() || 'Not set';
+                currentDeviceId.textContent = value;
+                deviceId.value = value;
+                lastUpdate.textContent = new Date().toLocaleTimeString();
+            });
+            
+            // Listen for status changes
+            firebase.database().ref(PATH_STATUS).on('value', (snapshot) => {
+                const value = snapshot.val() || 'Not set';
+                currentStatus.textContent = value;
+                lastUpdate.textContent = new Date().toLocaleTimeString();
+            });
+            
+            // Listen for message changes
+            firebase.database().ref(PATH_MESSAGE).on('value', (snapshot) => {
+                const value = snapshot.val() || 'Not set';
+                currentMessage.textContent = value;
+                message.value = value;
+                lastUpdate.textContent = new Date().toLocaleTimeString();
+            });
+        }
+        
+        // Update device settings
+        updateBtn.addEventListener('click', () => {
+            const deviceIdValue = deviceId.value.trim();
+            const messageValue = message.value.trim();
+            
+            if (!deviceIdValue && !messageValue) {
+                showNotification('No changes to update', 'info');
+                return;
+            }
+            
+            const updates = {};
+            
+            if (deviceIdValue) {
+                updates[PATH_DEVICE_ID] = deviceIdValue;
+            }
+            
+            if (messageValue) {
+                updates[PATH_MESSAGE] = messageValue;
+            }
+            
+            showNotification('Updating device settings...', 'info');
+            
+            firebase.database().ref().update(updates)
+                .then(() => {
+                    showNotification('Device settings updated successfully!', 'success');
+                })
+                .catch((error) => {
+                    showNotification(`Error updating settings: ${error.message}`, 'error');
+                });
+        });
+        
+        // Reconfigure ESP32 WiFi
+        reconfigBtn.addEventListener('click', () => {
+            if (confirm('Are you sure you want to put your ESP32 into WiFi configuration mode?')) {
+                showNotification('Triggering ESP32 reconfiguration...', 'info');
+                
+                firebase.database().ref(PATH_CREDENTIAL_STATUS).set('0')
+                    .then(() => {
+                        showNotification('ESP32 reconfiguration triggered!', 'success');
+                        reconfigInstructions.style.display = 'block';
+                        
+                        // Disable reconfigure button after triggering
+                        reconfigBtn.disabled = true;
+                        reconfigBtn.textContent = 'Reconfiguration Mode Active';
+                        
+                        // Re-enable button after 1 minute
+                        setTimeout(() => {
+                            reconfigBtn.disabled = false;
+                            reconfigBtn.textContent = 'Reconfigure ESP32 WiFi';
+                        }, 60000);
+                    })
+                    .catch((error) => {
+                        showNotification(`Error triggering reconfiguration: ${error.message}`, 'error');
+                    });
+            }
+        });
+        
+        // Show notification function
+        function showNotification(message, type) {
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.display = 'block';
+            
+            // Auto-hide after 5 seconds (except for reconfiguration instructions)
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html> 
