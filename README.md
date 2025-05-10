@@ -3,6 +3,15 @@
 ## Overview
 This project implements an IoT device management system using ESP32 microcontrollers with Firebase integration and OLED display capabilities. It provides a web interface for remote device monitoring and configuration, along with a local access point mode for direct WiFi configuration.
 
+## Configuration Page
+![image](https://github.com/user-attachments/assets/1841c052-0148-48f0-bf5b-624c6a191350)
+
+## Main Page
+![image](https://github.com/user-attachments/assets/effadf4c-9482-4a25-8baa-00fc5797eddb)
+
+## Index Page
+![image](https://github.com/user-attachments/assets/711e11e5-c1be-4c59-9104-bbdbbe766226)
+
 ## Features
 - **Remote Device Monitoring**: View device status, messages, and identifiers through Firebase
 - **Remote Configuration**: Update device settings without physical access
