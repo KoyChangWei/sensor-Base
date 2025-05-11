@@ -102,14 +102,43 @@ void setup() {
   pinMode(AP_MODE_BUTTON_PIN, INPUT_PULLUP);
   delay(100); // Small delay for pin to stabilize
 
-  if (digitalRead(AP_MODE_BUTTON_PIN) == LOW || esid.length() == 0) {
-    Serial.println("Button pressed or no SSID. Forcing AP Mode.");
-
-    // If button pressed and we have WiFi credentials and Firebase is set up, update Firebase status
-    if (digitalRead(AP_MODE_BUTTON_PIN) == LOW && esid.length() > 0) {
-      // Try to connect to WiFi to update Firebase before entering AP mode
-      if (testWifi() && Firebase.ready()) {
-        Serial.println("Setting Firebase Credential/status to 0...");
+  bool forceAPMode = (digitalRead(AP_MODE_BUTTON_PIN) == LOW || esid.length() == 0);
+  bool buttonPressed = (digitalRead(AP_MODE_BUTTON_PIN) == LOW);
+  
+  // If we don't need to force AP mode yet or we need to update Firebase first
+  if (!forceAPMode || (buttonPressed && esid.length() > 0)) {
+    // Try connecting to WiFi regardless if we have valid credentials
+    if (esid.length() > 0 && testWifi()) {
+      Serial.println("WiFi Connected for Firebase initialization!");
+      updateOLEDDisplay("WiFi Connected!", esid, "Initializing", "Firebase...");
+      
+      // Initialize Firebase
+      config_fb.api_key = API_KEY;
+      config_fb.database_url = DATABASE_URL;
+      auth.user.email = USER_EMAIL;
+      auth.user.password = USER_PASSWORD;
+      config_fb.token_status_callback = tokenStatusCallback;
+      
+      Firebase.begin(&config_fb, &auth);
+      Firebase.reconnectWiFi(true);
+      
+      // Wait for Firebase to be ready with timeout
+      unsigned long firebase_init_start = millis();
+      bool firebaseInitialized = false;
+      
+      while (!Firebase.ready() && millis() - firebase_init_start < 10000) {
+        Serial.print(".");
+        delay(200);
+      }
+      
+      // Force AP mode if Firebase initialization fails (possible wrong credentials)
+      if (!Firebase.ready()) {
+        Serial.println("\nFirebase initialization timeout - likely wrong WiFi credentials");
+        updateOLEDDisplay("Firebase Failed", "Entering AP Mode", "", "");
+        delay(1000);
+        forceAPMode = true;
+      } else if (buttonPressed && Firebase.ready()) {
+        Serial.println("\nButton pressed - Setting Firebase Credential/status to 0...");
         if (Firebase.RTDB.setString(&fbdoSet, FB_PATH_CREDENTIAL_STATUS, "0")) {
           Serial.println("Firebase Credential/status successfully set to 0");
           updateOLEDDisplay("Button Pressed", "Firebase Updated", "Entering AP Mode", "");
@@ -118,64 +147,71 @@ void setup() {
           Serial.println("Failed to set Firebase Credential/status: " + fbdoSet.errorReason());
         }
       }
+    } else {
+      forceAPMode = true; // Force AP mode if WiFi connection fails
     }
-
+  }
+  
+  // Now handle AP mode after trying to update Firebase
+  if (forceAPMode) {
     updateOLEDDisplay("AP Mode...", "Connect to:", "ESP32_Config", "192.168.4.1");
     ap_mode();
   } else {
-    updateOLEDDisplay("Connecting WiFi...", esid, "", "Device: " + edevid);
-    if (testWifi()) {
-      Serial.println("WiFi Connected!");
-      digitalWrite(STATUS_LED_PIN, LOW); // LED OFF in normal STA mode
-      updateOLEDDisplay("WiFi Connected!", esid, "Device: " + edevid, "FB Init...");
+    // Regular operation mode (WiFi connected)
+    Serial.println("WiFi Connected!");
+    digitalWrite(STATUS_LED_PIN, LOW); // LED OFF in normal STA mode
+    updateOLEDDisplay("WiFi Connected!", esid, "Device: " + edevid, "FB Init...");
 
-      // Firebase Configuration
-      config_fb.api_key = API_KEY;
-      config_fb.database_url = DATABASE_URL;
-      auth.user.email = USER_EMAIL;
-      auth.user.password = USER_PASSWORD;
-
-      // Assign the callback function for token status processing
-      config_fb.token_status_callback = tokenStatusCallback; // Required for ESP32
-
-      Firebase.begin(&config_fb, &auth);
-      Firebase.reconnectWiFi(true);
-
+    // Ensure Firebase is properly initialized
+    if (!Firebase.ready()) {
       Serial.println("Initializing Firebase...");
+      // Firebase initialization might have already happened above, but check again
+      if (!config_fb.api_key.length()) {
+        config_fb.api_key = API_KEY;
+        config_fb.database_url = DATABASE_URL;
+        auth.user.email = USER_EMAIL;
+        auth.user.password = USER_PASSWORD;
+        config_fb.token_status_callback = tokenStatusCallback;
+        
+        Firebase.begin(&config_fb, &auth);
+        Firebase.reconnectWiFi(true);
+      }
+      
       // Wait for Firebase to be ready (initial authentication)
-      // This can take a few seconds
       unsigned long firebase_init_start = millis();
-      while(Firebase.getToken() == "" && millis() - firebase_init_start < 30000){ // Timeout after 30s
+      while (!Firebase.ready() && millis() - firebase_init_start < 20000) {
         Serial.print(".");
         delay(500);
-        if(!Firebase.ready() && Firebase.isTokenExpired()){
-             Serial.println("Token expired during init, trying to refresh.");
-             Firebase.refreshToken(&config_fb);
+        if (!Firebase.ready() && Firebase.isTokenExpired()) {
+          Serial.println("Token expired during init, trying to refresh.");
+          Firebase.refreshToken(&config_fb);
         }
       }
+    }
 
-      if(Firebase.ready()){
-        Serial.println("\nFirebase connection established.");
-        updateOLEDDisplay("Firebase Ready!", "Fetching data...", "", "Device: " + edevid);
-        
-        // Set credential status to "1" (normal operation) during startup
-        if (Firebase.RTDB.setString(&fbdoSet, FB_PATH_CREDENTIAL_STATUS, "1")) {
-          Serial.println("Credential status set to '1' (normal operation)");
-        } else {
-          Serial.println("Failed to set credential status: " + fbdoSet.errorReason());
-        }
-        
-        fetchFirebaseData(); // Initial fetch
+    if (Firebase.ready()) {
+      Serial.println("\nFirebase connection established.");
+      updateOLEDDisplay("Firebase Ready!", "Fetching data...", "", "Device: " + edevid);
+      
+      // Set credential status to "1" (normal operation) during startup
+      if (Firebase.RTDB.setString(&fbdoSet, FB_PATH_CREDENTIAL_STATUS, "1")) {
+        Serial.println("Credential status set to '1' (normal operation)");
       } else {
-        Serial.println("\nFirebase connection failed. Check credentials or network.");
-        Serial.print("Error: "); Serial.println(fbdoStream.errorReason());
-        updateOLEDDisplay("Firebase Failed!", fbdoStream.errorReason().substring(0,15), "", "Check Serial");
+        Serial.println("Failed to set credential status: " + fbdoSet.errorReason());
       }
-
+      
+      // Update Firebase with the device ID from configuration
+      if (Firebase.RTDB.setString(&fbdoSet, FB_PATH_OLED_DEVICE_ID, edevid)) {
+        Serial.println("Device ID successfully updated in Firebase: " + edevid);
+      } else {
+        Serial.println("Failed to update Device ID in Firebase: " + fbdoSet.errorReason());
+      }
+      
+      fetchFirebaseData(); // Initial fetch
     } else {
-      Serial.println("Failed to connect to WiFi. Entering AP Mode.");
-      updateOLEDDisplay("WiFi Failed.", "Starting AP Mode", "ESP32_Config", "192.168.4.1");
-      ap_mode();
+      Serial.println("\nFirebase connection failed. Check credentials or network.");
+      Serial.print("Error: "); Serial.println(fbdoStream.errorReason());
+      updateOLEDDisplay("Firebase Failed!", fbdoStream.errorReason().substring(0,15), "", "Check Serial");
     }
   }
 }
@@ -203,28 +239,35 @@ void loop() {
       }
     }
   } else { // Normal Operation Mode (Connected to WiFi)
+    static unsigned long lastWiFiOK = millis();
+    static int failCount = 0;
+    
     if (WiFi.status() == WL_CONNECTED && Firebase.ready()) {
+      // Connection is good - reset counters
+      failCount = 0;
+      lastWiFiOK = millis();
+      
       if (millis() - lastFirebaseRead > firebaseReadInterval) {
         fetchFirebaseData();
         
         // Check if credential status is "0" (reconfiguration requested)
         if (credential_status_fb == "0") {
           Serial.println("Remote reconfiguration requested via Firebase!");
-          updateOLEDDisplay("Remote Reconfig", "Requested", "Entering AP Mode", "");
-          delay(2000); // Give user time to see the message
-          ap_mode();    // Enter AP mode
-          return;       // Exit the loop iteration
+          updateOLEDDisplay("Remote Reconfig", "Entering AP Mode", "", "");
+          delay(1000);
+          ap_mode();
+          return;
         }
-        
         lastFirebaseRead = millis();
       }
     } else if (WiFi.status() != WL_CONNECTED) {
+      failCount++;
       Serial.println("WiFi disconnected. Attempting to reconnect...");
       updateOLEDDisplay("WiFi Lost!", "Reconnecting...", "", "Device: " + edevid);
-      if (!testWifi()) { // Try to reconnect
+      
+      if (!testWifi()) {
          Serial.println("Reconnect failed. Entering AP Mode.");
-         updateOLEDDisplay("Reconnect Fail", "Starting AP Mode", "ESP32_Config", "192.168.4.1");
-         ap_mode(); // Fallback to AP mode if reconnect fails
+         ap_mode();
       } else {
          Serial.println("WiFi Reconnected!");
          updateOLEDDisplay("WiFi Online!", esid, "", "Device: " + edevid);
@@ -233,17 +276,27 @@ void loop() {
             Firebase.begin(&config_fb, &auth); // Re-initialize Firebase
          }
       }
-    } else if (!Firebase.ready()){ // WiFi connected but Firebase not ready
-        Serial.println("Firebase not ready. Checking token...");
-        updateOLEDDisplay("Firebase Issue", "Token Refresh?", fbdoStream.errorReason().substring(0,15), "Device: " + edevid);
-        if(Firebase.isTokenExpired()){
-            Serial.println("Firebase token expired. Refreshing...");
-            Firebase.refreshToken(&config_fb);
-        } else if (Firebase.getToken() == "") {
-            Serial.println("Firebase token is empty. Re-initializing...");
-            Firebase.begin(&config_fb, &auth);
-        }
-        delay(2000); // Wait a bit before next check
+    } else if (!Firebase.ready()) {
+      failCount++;
+      Serial.println("Firebase not ready. Checking token...");
+      
+      // Enter AP mode after multiple failures or extended failure time
+      if (failCount > 5 || (millis() - lastWiFiOK > 30000 && failCount > 2)) {
+        Serial.println("Persistent failures - likely wrong WiFi credentials");
+        updateOLEDDisplay("Auth Failed", "Entering AP Mode", "", "");
+        delay(1000);
+        ap_mode();
+        return;
+      }
+      
+      if(Firebase.isTokenExpired()){
+          Serial.println("Firebase token expired. Refreshing...");
+          Firebase.refreshToken(&config_fb);
+      } else if (Firebase.getToken() == "") {
+          Serial.println("Firebase token is empty. Re-initializing...");
+          Firebase.begin(&config_fb, &auth);
+      }
+      delay(2000); // Wait a bit before next check
     }
 
     // Update OLED with current data regardless of Firebase fetch interval if not in AP mode
@@ -557,6 +610,12 @@ boolean testWifi() {
 
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("\nWiFi connected. IP address: " + WiFi.localIP().toString());
+    // Simplified stability check - just verify connection is maintained after brief delay
+    delay(1000);
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("WiFi connection unstable - likely wrong credentials");
+      return false;
+    }
     WiFi.setAutoReconnect(true);
     WiFi.persistent(true);
     return true;
